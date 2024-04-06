@@ -1,43 +1,59 @@
+---
 name: Haskell CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [master]
   pull_request:
-    branches: [ "master" ]
-
-permissions:
-  contents: read
+    branches: [master]
 
 jobs:
-  build:
+  build_and_test:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        plan:
+          - {build: stack}
+        include:
+          - os: ubuntu-latest
+            apt-get: graphviz
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-haskell@v1
-      with:
-        ghc-version: '8.10.3'
-        cabal-version: '3.2'
+      - name: Install ${{ matrix.os }} Packages
+        uses: mstksg/get-package@v1
+        with:
+          apt-get: ${{ matrix.apt-get }}
 
-    - name: Cache
-      uses: actions/cache@v3
-      env:
-        cache-name: cache-cabal
-      with:
-        path: ~/.cabal
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/*.cabal') }}-${{ hashFiles('**/cabal.project') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        cabal update
-        cabal build --only-dependencies --enable-tests --enable-benchmarks
-    - name: Build
-      run: cabal build --enable-tests --enable-benchmarks all
-    - name: Run tests
-      run: cabal test all
+      - name: Cache Stack
+        id: cache-stack-unix
+        uses: actions/cache@v4
+        with:
+          path: ~/.stack
+          key: ${{ matrix.os }}-${{ matrix.plan.build }}-stack-home-${{ hashFiles('stack.yaml') }}-${{ hashFiles('package.yaml') }}
+
+      - name: Setup stack
+        uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+
+      - name: Install dependencies
+        run: |
+          set -ex
+          stack --no-terminal --install-ghc build --test --bench --only-dependencies
+          set +ex
+        env:
+          BUILD: ${{ matrix.plan.build }}
+
+      - name: Build and test
+        run: |
+          set -ex
+          stack --no-terminal test --coverage --bench --no-run-benchmarks --haddock --no-haddock-deps
+          set +ex
+        env:
+          BUILD: ${{ matrix.plan.build }}
