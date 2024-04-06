@@ -19,7 +19,7 @@ output = do
   image "a"
   assertion True $ indent $ image "h"
   paragraph $ translate $ do
-    german "xd"
-    english "rofl"
+    german "Sprich Deutsch!"
+    english "Speak English!"
   pure ()
 
