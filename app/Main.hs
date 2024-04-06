@@ -8,8 +8,8 @@ import Control.Monad.Output
 
 main :: IO ()
 main = do
-  a <- getResults output
-  print (a German)
+  a <- doubleConvert output
+  print a
 
 
 
@@ -23,3 +23,9 @@ output = do
     english "Speak English!"
   pure ()
 
+
+doubleConvert :: LangM (ReportT Result IO) -> IO Result
+doubleConvert out = do
+  res <- getResults out
+  res2 <- getResults $ toOutputMonad $ res German
+  pure (res2 German)

@@ -1,20 +1,22 @@
 {-# language TypeSynonymInstances #-}
 {-# language FlexibleInstances #-}
-module Instance (getResults) where
+module Instance (getResults, toOutputMonad, Result(..)) where
 
 
 import Data.Map (Map)
+import Data.Foldable
 import Data.Tuple.Extra (second, dupe)
 import qualified Data.Map as Map
 import Control.Monad.Output.Generic
 import Control.Monad.Output
 import Control.Monad
+import Control.Monad.Trans.State (put)
 
 
 data Result
     = Empty
     | Paragraph [Result]
-    | Image
+    | Image FilePath
     | Enumerated
     | Itemized
     | Indented [Result]
@@ -28,9 +30,9 @@ data Result
 instance GenericOutputMonad Language (ReportT Result IO) where
   assertion b r = unless b $ toAbort r
   -- | for printing a single image from file
-  image _ = format Image
+  image = format . Image
   -- | for printing multiple images using the given map
-  images _ _ _ = format Image
+  images _ _ _ = format $ Image "no"
   -- | for a complete paragraph
   paragraph r = alignOutput Paragraph r
   -- | should abort at once
@@ -48,6 +50,22 @@ instance GenericOutputMonad Language (ReportT Result IO) where
   translatedCode =  format . Code . toMap
   -- | for displaying text with translations
   translated = format . Translated . toMap
+
+
+
+toOutputMonad :: OutputMonad m => Result -> LangM m
+toOutputMonad res = case res of
+  Empty         -> pure ()
+  Paragraph xs  -> paragraph $ for_ xs toOutputMonad
+  Image path    -> image path
+  Enumerated    -> error "rip"
+  Itemized      -> error "rip"
+  Indented xs   -> indent $ for_ xs toOutputMonad
+  Translated m  -> translate $ put m
+  Code m        -> translate $ put m
+  Latex s       -> latex s
+  Results r1 r2 -> for_ [r1,r2] toOutputMonad
+
 
 
 toMap :: (Bounded l, Enum l, Ord l) => (l -> o) -> Map l o
