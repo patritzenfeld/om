@@ -1,10 +1,11 @@
-name:                om
-version:             0.1.0.0
-github:              "githubuser/om"
-license:             BSD-3-Clause
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2024 Author name here"
+---
+name: om
+version: 0.1.0.0
+github: "githubuser/om"
+license: BSD-3-Clause
+author: "Author name here"
+maintainer: "example@example.com"
+copyright: "2024 Author name here"
 
 extra-source-files:
   - README.md
