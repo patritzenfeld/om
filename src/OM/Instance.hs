@@ -1,6 +1,6 @@
 {-# language TypeSynonymInstances #-}
 {-# language FlexibleInstances #-}
-module OM.Instance (getResults, toOutputMonad, Result(..)) where
+module OM.Instance (getResults, getResultsWithRating, toOutputMonad, Result(..)) where
 
 
 import Data.Map (Map)
@@ -76,5 +76,10 @@ toOutputMonad res = for_ res toInterface
 toMap :: (Bounded l, Enum l, Ord l) => (l -> o) -> Map l o
 toMap f = Map.fromList $ map (second f . dupe) [minBound .. maxBound]
 
+
 getResults :: LangM (ReportT [Result] IO) -> IO [Result]
 getResults lm = snd <$> runLangMReportMultiLang [] (++) ($ English) lm
+
+
+getResultsWithRating :: Rated (ReportT [Result] IO) -> IO (Maybe Rational,[Result])
+getResultsWithRating lm = runLangMReportMultiLang [] (++) ($ English) lm
