@@ -32,5 +32,5 @@ output b = do
 doubleConvert :: LangM (ReportT [Result] IO) -> IO [Result]
 doubleConvert out = do
   res <- getResults out
-  res2 <- getResults $ toOutputMonad $ res German
-  pure (res2 German)
+  res2 <- getResults $ toOutputMonad $ res
+  pure (res2)

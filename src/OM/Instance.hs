@@ -76,5 +76,5 @@ toOutputMonad res = for_ res toInterface
 toMap :: (Bounded l, Enum l, Ord l) => (l -> o) -> Map l o
 toMap f = Map.fromList $ map (second f . dupe) [minBound .. maxBound]
 
-getResults :: LangM (ReportT [Result] IO) -> IO (Language -> [Result])
-getResults lm = snd <$> runLangMReport [] (++) lm
+getResults :: LangM (ReportT [Result] IO) -> IO [Result]
+getResults lm = snd <$> runLangMReportMultiLang [] (++) ($ English) lm
