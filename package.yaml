@@ -47,6 +47,8 @@ ghc-options:
 
 library:
   source-dirs: src
+  exposed-modules:
+    - OM.Instance
 
 executables:
   om-exe:

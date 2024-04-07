@@ -25,7 +25,7 @@ source-repository head
 
 library
   exposed-modules:
-      Instance
+      OM.Instance
   other-modules:
       Paths_om
   autogen-modules:

@@ -1,6 +1,6 @@
 {-# language TypeSynonymInstances #-}
 {-# language FlexibleInstances #-}
-module Instance (getResults, toOutputMonad, Result(..)) where
+module OM.Instance (getResults, toOutputMonad, Result(..)) where
 
 
 import Data.Map (Map)

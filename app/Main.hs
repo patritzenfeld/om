@@ -1,7 +1,7 @@
 {-# language ApplicativeDo #-}
 module Main (main) where
 
-import Instance
+import OM.Instance
 import Control.Monad.Output
 
 
