@@ -8,23 +8,28 @@ import Control.Monad.Output
 
 main :: IO ()
 main = do
-  a <- doubleConvert output
+  a <- doubleConvert $ output True
   print a
 
 
 
 
-output :: OutputMonad m => LangM m
-output = do
+output :: OutputMonad m => Bool -> LangM m
+output b = do
   image "a"
-  assertion True $ indent $ image "h"
+  assertion b $ indent $ do
+    image "h"
+    paragraph $ translate $ do
+      german "Sprich Deutsch!"
+      english "Speak English!"
+    pure ()
   paragraph $ translate $ do
     german "Sprich Deutsch!"
     english "Speak English!"
   pure ()
 
 
-doubleConvert :: LangM (ReportT Result IO) -> IO Result
+doubleConvert :: LangM (ReportT [Result] IO) -> IO [Result]
 doubleConvert out = do
   res <- getResults out
   res2 <- getResults $ toOutputMonad $ res German
