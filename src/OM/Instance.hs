@@ -1,5 +1,6 @@
 {-# language TypeSynonymInstances #-}
 {-# language FlexibleInstances #-}
+{-# language DeriveGeneric #-}
 module OM.Instance (getResults, getResultsWithRating, toOutputMonad, Result(..)) where
 
 
@@ -12,6 +13,7 @@ import Control.Monad.Output.Generic
 import Control.Monad.Output
 import Control.Monad
 import Control.Monad.Trans.State (put, State)
+import GHC.Generics (Generic)
 
 
 data Result
@@ -24,7 +26,7 @@ data Result
     | Translated (Map Language String)
     | Code (Map Language String)
     | Latex String
-    deriving (Show,Read,Eq)
+    deriving (Eq, Generic, Read, Show)
 
 
 instance Monad m => GenericOutputMonad Language (ReportT [Result] m) where
@@ -79,9 +81,9 @@ toMap :: (Bounded l, Enum l, Ord l) => (l -> o) -> Map l o
 toMap f = Map.fromList $ map (second f . dupe) [minBound .. maxBound]
 
 
-getResults :: LangM (ReportT [Result] IO) -> IO [Result]
+getResults :: Monad m => LangM (ReportT [a] m) -> m [a]
 getResults lm = snd <$> runLangMReportMultiLang [] (++) ($ English) lm
 
 
-getResultsWithRating :: Rated (ReportT [Result] IO) -> IO (Maybe Rational,[Result])
+getResultsWithRating :: Monad m => Rated (ReportT [a] m) -> m (Maybe Rational,[a])
 getResultsWithRating lm = runLangMReportMultiLang [] (++) ($ English) lm
