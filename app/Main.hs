@@ -17,6 +17,7 @@ main = do
 
 output :: (MonadIO m, OutputMonad m) => Bool -> LangM m
 output b = do
+  enumerateM (\n -> code $ show n) [(1,code "lol"),(2,code "xd")]
   image $=<< liftIO $ do
     print "Oops, I did an IO again..."
     pure "a"

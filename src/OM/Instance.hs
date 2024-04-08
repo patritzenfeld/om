@@ -1,4 +1,3 @@
-{-# language TypeSynonymInstances #-}
 {-# language FlexibleInstances #-}
 {-# language DeriveGeneric #-}
 module OM.Instance (getResults, getResultsWithRating, toOutputMonad, Result(..)) where
@@ -6,7 +5,7 @@ module OM.Instance (getResults, getResultsWithRating, toOutputMonad, Result(..))
 
 import Data.Map (Map)
 import Data.Foldable
-import Data.Tuple.Extra (second, dupe)
+import Data.Tuple.Extra (second, dupe, first)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import Control.Monad.Output.Generic
@@ -20,7 +19,7 @@ data Result
     = Paragraph [Result]
     | Image FilePath
     | Refuse [Result]
-    | Enumerated
+    | Enumerated ([Result],[Result])
     | Itemized [Result]
     | Indented [Result]
     | Translated (Map Language String)
@@ -40,7 +39,21 @@ instance Monad m => GenericOutputMonad Language (ReportT [Result] m) where
   -- | should abort at once
   refuse = alignOutput ((:[]) . Refuse . concat)
   -- | for an enumerated sequence of elements
-  enumerateM _ _ = format [Enumerated]
+  enumerateM f tups = combineReports ((:[]) . Enumerated . toTuple) combine
+    where
+      combine = map ( uncurry (combineTwoReports
+                                (\x y -> [Enumerated (concat x, concat y)])
+                              )
+                    . first f)
+                    tups
+
+      toTuple res = (concatMap fst comp, concatMap snd comp)
+        where
+          comp = map expose $ concat $ concat res
+
+          expose (Enumerated tup) = tup
+          expose _                = error "This isn't possible"
+
   -- | for an unenumerated sequence of elements
   itemizeM = combineReports ((:[]) . Itemized . concat . concat)
   -- | for indentation
@@ -57,15 +70,15 @@ instance Monad m => GenericOutputMonad Language (ReportT [Result] m) where
 
 toInterface :: OutputMonad m => Result -> LangM m
 toInterface res = case res of
-  Paragraph xs  -> paragraph $ for_ xs toInterface
-  Image path    -> image path
-  Refuse xs     -> refuse $ for_ xs toInterface
-  Enumerated    -> error "rip"
-  Itemized xs   -> itemizeM $ map toInterface xs
-  Indented xs   -> indent $ for_ xs toInterface
-  Translated m  -> translate $ put m
-  Code m        -> translateCode $ put m
-  Latex s       -> latex s
+  Paragraph xs     -> paragraph $ for_ xs toInterface
+  Image path       -> image path
+  Refuse xs        -> refuse $ for_ xs toInterface
+  Enumerated (a,b) -> enumerateM id $ zip (map toInterface a) (map toInterface b)
+  Itemized xs      -> itemizeM $ map toInterface xs
+  Indented xs      -> indent $ for_ xs toInterface
+  Translated m     -> translate $ put m
+  Code m           -> translateCode $ put m
+  Latex s          -> latex s
 
 
 
@@ -85,5 +98,7 @@ getResults :: (Monad m,  Monoid n) => LangM (ReportT n m) -> m n
 getResults lm = snd <$> runLangMReportMultiLang mempty (<>) ($ English) lm
 
 
+
+
 getResultsWithRating :: (Monad m, Monoid n) => Rated (ReportT n m) -> m (Maybe Rational,n)
-getResultsWithRating lm = runLangMReportMultiLang mempty (<>) ($ English) lm
+getResultsWithRating = runLangMReportMultiLang mempty (<>) ($ English)
