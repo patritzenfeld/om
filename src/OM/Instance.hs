@@ -81,9 +81,9 @@ toMap :: (Bounded l, Enum l, Ord l) => (l -> o) -> Map l o
 toMap f = Map.fromList $ map (second f . dupe) [minBound .. maxBound]
 
 
-getResults :: Monad m => LangM (ReportT [a] m) -> m [a]
-getResults lm = snd <$> runLangMReportMultiLang [] (++) ($ English) lm
+getResults :: (Monad m,  Monoid n) => LangM (ReportT n m) -> m n
+getResults lm = snd <$> runLangMReportMultiLang mempty (<>) ($ English) lm
 
 
-getResultsWithRating :: Monad m => Rated (ReportT [a] m) -> m (Maybe Rational,[a])
-getResultsWithRating lm = runLangMReportMultiLang [] (++) ($ English) lm
+getResultsWithRating :: (Monad m, Monoid n) => Rated (ReportT n m) -> m (Maybe Rational,n)
+getResultsWithRating lm = runLangMReportMultiLang mempty (<>) ($ English) lm
