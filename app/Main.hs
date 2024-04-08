@@ -18,10 +18,9 @@ output :: OutputMonad m => Bool -> LangM m
 output b = do
   image "a"
   assertion b $ indent $ do
-    image "h"
     paragraph $ translate $ do
-      german "Sprich Deutsch!"
-      english "Speak English!"
+      german "Abgebrochen!"
+      english "Aborted!"
     pure ()
   paragraph $ translate $ do
     german "Sprich Deutsch!"

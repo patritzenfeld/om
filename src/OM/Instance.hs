@@ -17,6 +17,7 @@ import Control.Monad.Trans.State (put, State)
 data Result
     = Paragraph [Result]
     | Image FilePath
+    | Refuse [Result]
     | Enumerated
     | Itemized [Result]
     | Indented [Result]
@@ -35,7 +36,7 @@ instance Monad m => GenericOutputMonad Language (ReportT [Result] m) where
   -- | for a complete paragraph
   paragraph = alignOutput ((:[]) . Paragraph . concat)
   -- | should abort at once
-  refuse = toAbort
+  refuse = alignOutput ((:[]) . Refuse . concat)
   -- | for an enumerated sequence of elements
   enumerateM _ _ = format [Enumerated]
   -- | for an unenumerated sequence of elements
@@ -56,6 +57,7 @@ toInterface :: OutputMonad m => Result -> LangM m
 toInterface res = case res of
   Paragraph xs  -> paragraph $ for_ xs toInterface
   Image path    -> image path
+  Refuse xs     -> refuse $ for_ xs toInterface
   Enumerated    -> error "rip"
   Itemized xs   -> itemizeM $ map toInterface xs
   Indented xs   -> indent $ for_ xs toInterface
