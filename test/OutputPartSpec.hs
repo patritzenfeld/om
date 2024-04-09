@@ -1,9 +1,6 @@
-{-# language StandaloneDeriving #-}
-{-# language DeriveGeneric #-}
 module OutputPartSpec (spec) where
 
 
-import GHC.Generics
 import Generic.Random
 import Test.Hspec (describe, it, Spec)
 import Test.QuickCheck (Arbitrary(..), chooseInt, forAll, vectorOf, Gen)
@@ -48,5 +45,5 @@ spec = do
         it "converting twice yields original value" $
              forAll arbitrary $
               \outputParts -> monadicIO $ do
-                                             new <- run $ getResults (toOutputMonad outputParts)
-                                             assert (new == outputParts)
+                new <- run $ getResults (toOutputMonad outputParts)
+                assert (new == outputParts)

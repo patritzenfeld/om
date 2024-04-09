@@ -20,7 +20,7 @@ data OutputPart
     | Image FilePath
     | Images (Map String FilePath)
     | Refuse [OutputPart]
-    | Enumerated ([OutputPart],[OutputPart])
+    | Enumerated [([OutputPart],[OutputPart])]
     | Itemized [[OutputPart]]
     | Indented [OutputPart]
     | Translated (Map Language String)
@@ -29,55 +29,52 @@ data OutputPart
     deriving (Eq, Generic, Read, Show)
 
 
-instance Monad m => GenericOutputMonad Language (ReportT [OutputPart] m) where
+instance GenericOutputMonad Language (ReportT OutputPart IO) where
   assertion b = unless b . refuse
   -- | for printing a single image from file
-  image = format . (:[]) . Image
+  image = format . Image
   -- | for printing multiple images using the given map
-  images descF fileF = format . (:[]) . Images . Map.mapKeys descF . Map.map fileF
+  images descF fileF = format . Images . Map.mapKeys descF . Map.map fileF
   -- | for a complete paragraph
-  paragraph = alignOutput ((:[]) . Paragraph . concat)
+  paragraph = alignOutput Paragraph
   -- | should abort at once
-  refuse = alignOutput ((:[]) . Refuse . concat)
+  refuse = alignOutput Refuse
   -- | for an enumerated sequence of elements
-  enumerateM f tups = combineReports ((:[]) . Enumerated . toTuple) combine  -- Somewhat hacky , didn't want to import a bunch of Monad.Transformers here
+  enumerateM f tups = combineReports (Enumerated . toList) combine  -- Somewhat hacky , didn't want to import a bunch of Monad.Transformers here
     where
-      combine = map ( uncurry (combineTwoReports
-                                (\x y -> [Enumerated (concat x, concat y)])
-                              )
-                    . first f)
-                    tups
+      combine :: [GenericLangM Language (GenericReportT Language OutputPart IO) ()]
+      combine = map (\(a,b) -> (combineTwoReports (\x y -> Enumerated [(x, y)]) a b)) $ map (first f) tups
 
-      toTuple res = (concatMap fst comp, concatMap snd comp)
-        where
-          comp = map expose $ concat $ concat res
+      toList :: [[OutputPart]] -> [([OutputPart],[OutputPart])]
+      toList res = concatMap expose $ concat $ res
 
-          expose (Enumerated tup) = tup
-          expose _                = error "This isn't possible"
+      expose :: OutputPart -> [([OutputPart],[OutputPart])]
+      expose (Enumerated list) = list
+      expose _                 = error "This isn't possible"
 
   -- | for an unenumerated sequence of elements
-  itemizeM = combineReports ((:[]) . Itemized . concat)
+  itemizeM = combineReports Itemized
   -- | for indentation
-  indent = alignOutput ((:[]) . Indented . concat)
+  indent = alignOutput Indented
   -- | for LaTeX-Math code (i.e. without surrounding @$@)
-  latex = format . (:[]) . Latex
+  latex = format . Latex
   -- | for fixed width fonts (i.e. typewriter style)
   -- | same as 'code', but with different translations
-  translatedCode =  format . (:[]) . Code . toMap
+  translatedCode =  format . Code . toMap
   -- | for displaying text with translations
-  translated = format . (:[]) . Translated . toMap
+  translated = format . Translated . toMap
 
 
 
 toInterface :: OutputMonad m => OutputPart -> LangM m
 toInterface res = case res of
-  Paragraph xs     -> paragraph $ for_ xs toInterface
+  Paragraph xs     -> paragraph $ toOutputMonad xs
   Image path       -> image path
   Images m         -> images id id m
-  Refuse xs        -> refuse $ for_ xs toInterface
-  Enumerated tup   -> enumerateM id $ uncurry zip $ both (map toInterface) tup
-  Itemized xs      -> itemizeM $ concat $ map (map toInterface) xs
-  Indented xs      -> indent $ for_ xs toInterface
+  Refuse xs        -> refuse $ toOutputMonad xs
+  Enumerated list  -> enumerateM id $ zip (map (toOutputMonad . fst) list) (map (toOutputMonad . snd) list)
+  Itemized xs      -> itemizeM $ map toOutputMonad xs
+  Indented xs      -> indent $ toOutputMonad xs
   Translated m     -> translate $ put m
   Code m           -> translateCode $ put m
   Latex s          -> latex s
@@ -96,9 +93,18 @@ toMap :: (Bounded l, Enum l, Ord l) => (l -> o) -> Map l o
 toMap f = Map.fromList $ map (second f . dupe) [minBound .. maxBound]
 
 
-getResults :: (Monad m,  Monoid n) => LangM (ReportT n m) -> m n
-getResults lm = snd <$> runLangMReportMultiLang mempty (<>) ($ English) lm
+getResults :: Monad m => LangM (ReportT OutputPart m) -> m [OutputPart]
+getResults lm = (unParagraph . snd) <$> runLangMReportMultiLang (Paragraph []) (combine) ($ English) lm
 
 
-getResultsWithRating :: (Monad m, Monoid n) => Rated (ReportT n m) -> m (Maybe Rational,n)
-getResultsWithRating = runLangMReportMultiLang mempty (<>) ($ English)
+unParagraph :: OutputPart -> [OutputPart]
+unParagraph (Paragraph xs) = xs
+unParagraph  _ = []
+
+combine :: OutputPart -> OutputPart -> OutputPart
+combine (Paragraph xs) x = Paragraph (xs ++ [x])
+combine  _ _ = error "this is impossible"
+
+
+getResultsWithRating :: Monad m => Rated (ReportT OutputPart m) -> m (Maybe Rational,[OutputPart])
+getResultsWithRating lm = second unParagraph <$> runLangMReportMultiLang (Paragraph []) (combine) ($ English) lm

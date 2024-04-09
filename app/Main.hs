@@ -36,8 +36,17 @@ output b = do
 
 outputParts :: [OutputPart]
 outputParts =
-    [ Itemized
-       [
-         [Translated (Map.fromList [(German, "f")])]
-       ]
+    [
+      Itemized
+        [
+          [
+            Itemized []
+          ]
+        , [
+            Latex ""
+          , Translated (Map.fromList [(English,""),(German,"")])
+          ]
+        ]
     ]
+
+
