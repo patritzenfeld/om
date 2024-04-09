@@ -5,7 +5,7 @@ module OM.Instance (getResults, getResultsWithRating, toOutputMonad, Result(..))
 
 import Data.Map (Map)
 import Data.Foldable
-import Data.Tuple.Extra (second, dupe, first)
+import Data.Tuple.Extra (second, dupe, first, both)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import Control.Monad.Output.Generic
@@ -18,6 +18,7 @@ import GHC.Generics (Generic)
 data Result
     = Paragraph [Result]
     | Image FilePath
+    | Images (Map String FilePath)
     | Refuse [Result]
     | Enumerated ([Result],[Result])
     | Itemized [Result]
@@ -33,7 +34,7 @@ instance Monad m => GenericOutputMonad Language (ReportT [Result] m) where
   -- | for printing a single image from file
   image = format . (:[]) . Image
   -- | for printing multiple images using the given map
-  images _ _ _ = format [Image "no"]
+  images descF fileF m = format [Images $ Map.mapKeys descF $ Map.map fileF m]
   -- | for a complete paragraph
   paragraph = alignOutput ((:[]) . Paragraph . concat)
   -- | should abort at once
@@ -72,8 +73,9 @@ toInterface :: OutputMonad m => Result -> LangM m
 toInterface res = case res of
   Paragraph xs     -> paragraph $ for_ xs toInterface
   Image path       -> image path
+  Images m         -> images id id m
   Refuse xs        -> refuse $ for_ xs toInterface
-  Enumerated (a,b) -> enumerateM id $ zip (map toInterface a) (map toInterface b)
+  Enumerated tup   -> enumerateM id $ uncurry zip $ both (map toInterface) tup
   Itemized xs      -> itemizeM $ map toInterface xs
   Indented xs      -> indent $ for_ xs toInterface
   Translated m     -> translate $ put m
