@@ -1,15 +1,16 @@
 module OutputPartSpec (spec) where
 
 
-import Generic.Random
-import Test.Hspec (describe, it, Spec)
-import Test.QuickCheck (Arbitrary(..), chooseInt, forAll, vectorOf, Gen)
-import Test.QuickCheck.Monadic (monadicIO, assert, run)
 import Control.Monad.Output
+import Generic.Random          (BaseCase(..), genericArbitraryU')
+import Test.Hspec              (Spec, describe, it)
+import Test.QuickCheck         (Arbitrary(..), Gen, chooseInt, forAll, vectorOf)
+import Test.QuickCheck.Monadic (assert, monadicIO, run)
 
-import qualified Data.Map as Map
+import Data.Map (Map, fromList, member)
 
-import OM.Instance
+import OM.Instance (OutputPart(..), getResults, toOutputMonad)
+
 
 
 instance BaseCase OutputPart where
@@ -22,11 +23,11 @@ instance BaseCase OutputPart where
       _ -> error "impossible constructor"
 
 
-instance {-# Overlapping #-} Arbitrary (Map.Map Language String) where
+instance {-# Overlapping #-} Arbitrary (Map Language String) where
   arbitrary = do
     let langs = [minBound .. maxBound]
     texts <- vectorOf (length langs) arbitrary
-    pure $ Map.fromList $ zip langs texts
+    pure $ fromList $ zip langs texts
 
 
 instance Arbitrary OutputPart where
@@ -38,8 +39,8 @@ spec :: Spec
 spec = do
     describe "Language Maps" $
         it "always contains all languages" $
-             forAll (arbitrary :: Gen (Map.Map Language String)) $
-              \langMap -> all (`Map.member` langMap) ([minBound .. maxBound] :: [Language])
+             forAll (arbitrary :: Gen (Map Language String)) $
+              \langMap -> all (`member` langMap) ([minBound .. maxBound] :: [Language])
 
     describe "OutputPart" $
         it "converting to LangM and back yields original value" $

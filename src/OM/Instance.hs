@@ -1,18 +1,24 @@
-{-# language FlexibleInstances #-}
 {-# language DeriveGeneric #-}
-module OM.Instance (getResults, getResultsWithRating, toOutputMonad, OutputPart(..)) where
+module OM.Instance
+    ( OutputPart(..)
+    , getResults
+    , getResultsWithRating
+    , toOutputMonad
+    ) where
 
 
-import Data.Map (Map)
-import Data.Foldable
-import Data.Tuple.Extra (second, dupe, first)
-import Data.Maybe (fromMaybe)
-import qualified Data.Map as Map
-import Control.Monad.Output.Generic
+import Control.Monad                (unless)
 import Control.Monad.Output
-import Control.Monad (unless)
-import Control.Monad.Trans.State (put, State)
-import GHC.Generics (Generic)
+import Control.Monad.Output.Generic (runLangMReportMultiLang)
+import Control.Monad.Trans.State    (State, put)
+import Data.Foldable
+import Data.Map                     (Map)
+import Data.Maybe                   (fromMaybe)
+import Data.Tuple.Extra             (dupe, first, second)
+import GHC.Generics                 (Generic)
+
+import qualified Data.Map as Map
+
 
 
 data OutputPart
@@ -30,6 +36,8 @@ data OutputPart
 
 
 instance Monad m => GenericOutputMonad Language (ReportT OutputPart m) where
+  -- | for assertions, i.e. expected behaviour is explanation
+  -- (and abortion on 'False')
   assertion b = unless b . refuse
   -- | for printing a single image from file
   image = format . Image
@@ -46,7 +54,6 @@ instance Monad m => GenericOutputMonad Language (ReportT OutputPart m) where
 
       expose (Enumerated list) = list
       expose _                 = error "This is impossible"
-
   -- | for an unenumerated sequence of elements
   itemizeM = combineReports Itemized
   -- | for indentation
