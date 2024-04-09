@@ -27,8 +27,8 @@ instance BaseCase OutputPart where
 
 instance {-# Overlapping #-} Arbitrary (Map.Map Language String) where
   arbitrary = do
-    texts <- vectorOf 3 arbitrary
     let langs = [minBound .. maxBound]
+    texts <- vectorOf (length langs) arbitrary
     pure $ Map.fromList $ zip langs texts
 
 
