@@ -17,7 +17,7 @@ main = do
 
 output :: (MonadIO m, OutputMonad m) => Bool -> LangM m
 output b = do
-  enumerateM (\n -> code $ show n) [(1,code "Item 1"),(2,code "Item 2")]
+  enumerateM (\n -> code $ show n) [(1 :: Int,code "Item 1"),(2,code "Item 2")]
   image $=<< liftIO $ do
     putStrLn "Oops, I did an IO again..."
     pure "a"
@@ -34,7 +34,7 @@ output b = do
   pure ()
 
 
-doubleConvert :: LangM (ReportT [Result] IO) -> IO [Result]
+doubleConvert :: LangM (ReportT [OutputPart] IO) -> IO [OutputPart]
 doubleConvert out = do
   putStrLn "before getting results"
   res <- getResults out
