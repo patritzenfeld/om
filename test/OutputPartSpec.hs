@@ -36,13 +36,13 @@ instance Arbitrary OutputPart where
 
 spec :: Spec
 spec = do
-    describe "language maps" $
+    describe "Language Maps" $
         it "always contains all languages" $
              forAll (arbitrary :: Gen (Map.Map Language String)) $
               \langMap -> all (`Map.member` langMap) ([minBound .. maxBound] :: [Language])
 
-    describe "conversion" $
-        it "converting twice yields original value" $
+    describe "OutputPart" $
+        it "converting to LangM and back yields original value" $
              forAll arbitrary $
               \outputParts -> monadicIO $ do
                 new <- run $ getResults (toOutputMonad outputParts)

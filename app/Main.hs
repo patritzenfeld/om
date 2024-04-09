@@ -9,9 +9,8 @@ import qualified Data.Map as Map
 
 main :: IO ()
 main = do
-  x <- getResults $ toOutputMonad outputParts
+  x <- getResults $ output True
   print (x :: [OutputPart])
-
 
 
 
@@ -32,21 +31,3 @@ output b = do
     german "Sprich Deutsch!"
     english "Speak English!"
   pure ()
-
-
-outputParts :: [OutputPart]
-outputParts =
-    [
-      Itemized
-        [
-          [
-            Itemized []
-          ]
-        , [
-            Latex ""
-          , Translated (Map.fromList [(English,""),(German,"")])
-          ]
-        ]
-    ]
-
-

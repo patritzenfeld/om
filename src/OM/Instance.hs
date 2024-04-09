@@ -5,12 +5,12 @@ module OM.Instance (getResults, getResultsWithRating, toOutputMonad, OutputPart(
 
 import Data.Map (Map)
 import Data.Foldable
-import Data.Tuple.Extra (second, dupe, first, both)
+import Data.Tuple.Extra (second, dupe, first)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import Control.Monad.Output.Generic
 import Control.Monad.Output
-import Control.Monad
+import Control.Monad (unless)
 import Control.Monad.Trans.State (put, State)
 import GHC.Generics (Generic)
 
@@ -29,7 +29,7 @@ data OutputPart
     deriving (Eq, Generic, Read, Show)
 
 
-instance GenericOutputMonad Language (ReportT OutputPart IO) where
+instance Monad m => GenericOutputMonad Language (ReportT OutputPart m) where
   assertion b = unless b . refuse
   -- | for printing a single image from file
   image = format . Image
@@ -40,17 +40,12 @@ instance GenericOutputMonad Language (ReportT OutputPart IO) where
   -- | should abort at once
   refuse = alignOutput Refuse
   -- | for an enumerated sequence of elements
-  enumerateM f tups = combineReports (Enumerated . toList) combine  -- Somewhat hacky , didn't want to import a bunch of Monad.Transformers here
+  enumerateM f tups = combineReports (Enumerated . concatMap expose . concat) combine  -- Somewhat hacky , didn't want to import a bunch of monad transformers here
     where
-      combine :: [GenericLangM Language (GenericReportT Language OutputPart IO) ()]
-      combine = map (\(a,b) -> (combineTwoReports (\x y -> Enumerated [(x, y)]) a b)) $ map (first f) tups
+      combine = map (uncurry (combineTwoReports $ curry $ Enumerated . (:[])) . first f) tups
 
-      toList :: [[OutputPart]] -> [([OutputPart],[OutputPart])]
-      toList res = concatMap expose $ concat $ res
-
-      expose :: OutputPart -> [([OutputPart],[OutputPart])]
       expose (Enumerated list) = list
-      expose _                 = error "This isn't possible"
+      expose _                 = error "This is impossible"
 
   -- | for an unenumerated sequence of elements
   itemizeM = combineReports Itemized
@@ -72,7 +67,8 @@ toInterface res = case res of
   Image path       -> image path
   Images m         -> images id id m
   Refuse xs        -> refuse $ toOutputMonad xs
-  Enumerated list  -> enumerateM id $ zip (map (toOutputMonad . fst) list) (map (toOutputMonad . snd) list)
+  Enumerated list  -> enumerateM id $ zip (map (toOutputMonad . fst) list)
+                                          (map (toOutputMonad . snd) list)
   Itemized xs      -> itemizeM $ map toOutputMonad xs
   Indented xs      -> indent $ toOutputMonad xs
   Translated m     -> translate $ put m
@@ -94,17 +90,17 @@ toMap f = Map.fromList $ map (second f . dupe) [minBound .. maxBound]
 
 
 getResults :: Monad m => LangM (ReportT OutputPart m) -> m [OutputPart]
-getResults lm = (unParagraph . snd) <$> runLangMReportMultiLang (Paragraph []) (combine) ($ English) lm
+getResults lm = unbox . snd <$> runLangMReportMultiLang (Paragraph []) gather ($ English) lm
 
 
-unParagraph :: OutputPart -> [OutputPart]
-unParagraph (Paragraph xs) = xs
-unParagraph  _ = []
+unbox :: OutputPart -> [OutputPart]
+unbox (Paragraph xs) = xs
+unbox  _ = error "this is impossible"
 
-combine :: OutputPart -> OutputPart -> OutputPart
-combine (Paragraph xs) x = Paragraph (xs ++ [x])
-combine  _ _ = error "this is impossible"
+gather :: OutputPart -> OutputPart -> OutputPart
+gather (Paragraph xs) x = Paragraph (xs ++ [x])
+gather  _ _ = error "this is impossible"
 
 
 getResultsWithRating :: Monad m => Rated (ReportT OutputPart m) -> m (Maybe Rational,[OutputPart])
-getResultsWithRating lm = second unParagraph <$> runLangMReportMultiLang (Paragraph []) (combine) ($ English) lm
+getResultsWithRating lm = second unbox <$> runLangMReportMultiLang (Paragraph []) gather ($ English) lm
