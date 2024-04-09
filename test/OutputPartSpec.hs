@@ -15,11 +15,13 @@ import OM.Instance (OutputPart(..), getResults, toOutputMonad)
 
 instance BaseCase OutputPart where
   baseCase = do
-    which <- chooseInt (1,3)
+    which <- chooseInt (1,5)
     case which of
       1 -> Latex <$> arbitrary
       2 -> Translated <$> arbitrary
       3 -> Code <$> arbitrary
+      4 -> Image <$> arbitrary
+      5 -> Images <$> arbitrary
       _ -> error "impossible constructor"
 
 
