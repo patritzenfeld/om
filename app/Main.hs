@@ -9,8 +9,8 @@ import qualified Data.Map as Map
 
 main :: IO ()
 main = do
-  a <- doubleConvert $ output True
-  print a
+  x <- getResults $ toOutputMonad outputParts
+  print (x :: [OutputPart])
 
 
 
@@ -34,11 +34,10 @@ output b = do
   pure ()
 
 
-doubleConvert :: LangM (ReportT [OutputPart] IO) -> IO [OutputPart]
-doubleConvert out = do
-  putStrLn "before getting results"
-  res <- getResults out
-  putStrLn "after getting results"
-  res2 <- getResults $ toOutputMonad $ res
-  putStrLn "after back conversion"
-  pure (res2)
+outputParts :: [OutputPart]
+outputParts =
+    [ Itemized
+       [
+         [Translated (Map.fromList [(German, "f")])]
+       ]
+    ]

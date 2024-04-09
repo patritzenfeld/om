@@ -21,7 +21,7 @@ data OutputPart
     | Images (Map String FilePath)
     | Refuse [OutputPart]
     | Enumerated ([OutputPart],[OutputPart])
-    | Itemized [OutputPart]
+    | Itemized [[OutputPart]]
     | Indented [OutputPart]
     | Translated (Map Language String)
     | Code (Map Language String)
@@ -56,7 +56,7 @@ instance Monad m => GenericOutputMonad Language (ReportT [OutputPart] m) where
           expose _                = error "This isn't possible"
 
   -- | for an unenumerated sequence of elements
-  itemizeM = combineReports ((:[]) . Itemized . concat . concat)
+  itemizeM = combineReports ((:[]) . Itemized . concat)
   -- | for indentation
   indent = alignOutput ((:[]) . Indented . concat)
   -- | for LaTeX-Math code (i.e. without surrounding @$@)
@@ -76,7 +76,7 @@ toInterface res = case res of
   Images m         -> images id id m
   Refuse xs        -> refuse $ for_ xs toInterface
   Enumerated tup   -> enumerateM id $ uncurry zip $ both (map toInterface) tup
-  Itemized xs      -> itemizeM $ map toInterface xs
+  Itemized xs      -> itemizeM $ concat $ map (map toInterface) xs
   Indented xs      -> indent $ for_ xs toInterface
   Translated m     -> translate $ put m
   Code m           -> translateCode $ put m

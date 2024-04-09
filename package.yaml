@@ -71,3 +71,6 @@ tests:
       - -with-rtsopts=-N
     dependencies:
       - om
+      - generic-random
+      - hspec
+      - QuickCheck
