@@ -7,7 +7,6 @@ module OM.Instance
     ) where
 
 
-import Control.Monad                (unless)
 import Control.Monad.Output
 import Control.Monad.Output.Generic (runLangMReportMultiLang)
 import Control.Monad.Trans.State    (State, put)
@@ -22,23 +21,24 @@ import qualified Data.Map as Map
 
 
 data OutputPart
-    = Paragraph [OutputPart]
+    = Assertion Bool [OutputPart]
     | Image FilePath
     | Images (Map String FilePath)
+    | Paragraph [OutputPart]
     | Refuse [OutputPart]
     | Enumerated [([OutputPart],[OutputPart])]
     | Itemized [[OutputPart]]
     | Indented [OutputPart]
-    | Translated (Map Language String)
-    | Code (Map Language String)
     | Latex String
+    | Code (Map Language String)
+    | Translated (Map Language String)
     deriving (Eq, Generic, Read, Show)
 
 
 instance Monad m => GenericOutputMonad Language (ReportT OutputPart m) where
   -- | for assertions, i.e. expected behaviour is explanation
   -- (and abortion on 'False')
-  assertion b = unless b . refuse
+  assertion b = alignOutput (Assertion b)
   -- | for printing a single image from file
   image = format . Image
   -- | for printing multiple images using the given map
@@ -70,17 +70,18 @@ instance Monad m => GenericOutputMonad Language (ReportT OutputPart m) where
 
 toInterface :: OutputMonad m => OutputPart -> LangM m
 toInterface res = case res of
-  Paragraph xs     -> paragraph $ toOutputMonad xs
+  Assertion b xs   -> assertion b $ toOutputMonad xs
   Image path       -> image path
   Images m         -> images id id m
+  Paragraph xs     -> paragraph $ toOutputMonad xs
   Refuse xs        -> refuse $ toOutputMonad xs
   Enumerated list  -> enumerateM id $ zip (map (toOutputMonad . fst) list)
                                           (map (toOutputMonad . snd) list)
   Itemized xs      -> itemizeM $ map toOutputMonad xs
   Indented xs      -> indent $ toOutputMonad xs
-  Translated m     -> translate $ put m
-  Code m           -> translateCode $ put m
   Latex s          -> latex s
+  Code m           -> translateCode $ put m
+  Translated m     -> translate $ put m
 
 
 
